@@ -1,0 +1,483 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f5f7ff">
+  <title>Palindromic PDA Simulator</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #20243a;
+      --muted: #737990;
+      --line: #e8eaf3;
+      --blue: #5478ee;
+      --blue-dark: #3e5fd1;
+      --purple: #8062dc;
+      --green: #14845e;
+      --red: #c54558;
+      --surface: #fff;
+      --shadow: 0 12px 32px rgb(34 45 89 / 6%);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: #f5f7fc;
+      color: var(--ink);
+      font: 15px/1.5 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    button, input { font: inherit; }
+    button { cursor: pointer; }
+
+    .page { width: min(1240px, calc(100% - 40px)); margin: 0 auto; padding: 34px 0 56px; }
+    .header { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; margin-bottom: 26px; }
+    .eyebrow { color: var(--blue-dark); font-size: 11px; font-weight: 800; letter-spacing: .13em; text-transform: uppercase; }
+    h1 { margin: 7px 0 5px; font-size: clamp(26px, 4vw, 36px); letter-spacing: -.045em; line-height: 1.15; }
+    .subtitle { margin: 0; color: var(--muted); font-size: 15px; }
+    .badge { flex: 0 0 auto; margin-top: 6px; border: 1px solid #dfe5ff; border-radius: 999px; padding: 8px 13px; background: #eef2ff; color: #4a62bd; font-size: 12px; font-weight: 750; }
+    .formula { display: inline-flex; gap: 5px; align-items: center; margin-left: 8px; border-radius: 7px; background: #f0edff; color: #654bbd; padding: 3px 8px; font: 650 12px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+    .card { min-width: 0; border: 1px solid #ebedf5; border-radius: 16px; background: var(--surface); box-shadow: var(--shadow); }
+    .section-heading { display: flex; align-items: center; gap: 10px; margin: 0 0 16px; font-size: 16px; letter-spacing: -.015em; }
+    .section-heading .num { display: grid; width: 25px; height: 25px; place-items: center; border-radius: 8px; background: #eef2ff; color: var(--blue-dark); font-size: 12px; }
+    .input-card { padding: 22px 24px; }
+    .input-row { display: flex; gap: 10px; }
+    .input-wrap { position: relative; flex: 1; }
+    .input-wrap label { display: block; margin-bottom: 6px; color: #50556a; font-size: 12px; font-weight: 700; }
+    input[type="text"] { width: 100%; height: 44px; border: 1px solid #dfe3ef; border-radius: 9px; outline: none; padding: 0 13px; background: #fff; color: var(--ink); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 15px; transition: border-color .15s, box-shadow .15s; }
+    input[type="text"]:focus { border-color: #8398f5; box-shadow: 0 0 0 3px rgb(84 120 238 / 12%); }
+    input::placeholder { color: #a1a6b6; }
+    .controls { display: flex; align-items: flex-end; gap: 8px; }
+    .btn { min-height: 42px; border: 1px solid #e1e4ef; border-radius: 9px; padding: 0 13px; background: #fff; color: #50556a; font-size: 12px; font-weight: 750; transition: transform .12s, background .15s, border-color .15s; white-space: nowrap; }
+    .btn:hover:not(:disabled) { transform: translateY(-1px); border-color: #c7cfee; background: #f8f9ff; }
+    .btn:disabled { cursor: not-allowed; opacity: .48; }
+    .btn.primary { border-color: var(--blue); background: var(--blue); color: white; }
+    .btn.primary:hover:not(:disabled) { border-color: var(--blue-dark); background: var(--blue-dark); }
+    .btn.auto { color: #654bbd; }
+    .examples { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 16px; color: var(--muted); font-size: 12px; }
+    .example { border: 1px solid #e3e5ef; border-radius: 7px; padding: 5px 9px; background: #fafbff; color: #565b70; font: 650 12px ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .example:hover { border-color: #bfcafa; background: #f1f4ff; color: var(--blue-dark); }
+
+    .workspace { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr); gap: 18px; margin-top: 18px; }
+    .stack-card, .state-card, .table-card, .explanation-card, .result-card { padding: 20px 22px; }
+    .stack-card { min-height: 282px; }
+    .card-topline { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+    .mode-pill { border-radius: 999px; padding: 5px 9px; background: #edf1ff; color: #536bc7; font-size: 10px; font-weight: 800; letter-spacing: .04em; }
+    .mode-pill.pop { background: #f0edff; color: #7557c7; }
+    .mode-pill.done { background: #e9f7f0; color: var(--green); }
+    .mode-pill.reject { background: #fff0f1; color: var(--red); }
+    .stack-stage { display: flex; justify-content: center; align-items: flex-end; min-height: 181px; padding: 18px 10px 0; }
+    .stack-column { display: flex; flex-direction: column-reverse; align-items: center; gap: 6px; min-width: 92px; }
+    .stack-symbol { display: grid; width: 76px; height: 38px; place-items: center; border: 1px solid #c9d4ff; border-radius: 8px; background: linear-gradient(135deg, #f1f4ff, #e8edff); color: #4c62c0; font: 750 15px ui-monospace, SFMono-Regular, Menlo, monospace; animation: appear .2s ease-out; }
+    .stack-symbol.bottom { border-color: #d7d9e7; background: #f3f4f8; color: #656a7b; }
+    .stack-empty { color: #9a9fb0; font-size: 12px; }
+    .stack-caption { margin-top: 8px; color: #9196a8; font-size: 11px; text-align: center; }
+    @keyframes appear { from { opacity: 0; transform: translateY(-7px); } to { opacity: 1; transform: translateY(0); } }
+    .state-diagram { display: grid; grid-template-columns: 1fr 30px 1fr; align-items: center; gap: 4px; padding: 10px 2px 6px; }
+    .state-node { position: relative; min-height: 72px; display: flex; flex-direction: column; justify-content: center; align-items: center; border: 2px solid #e3e6f0; border-radius: 14px; background: #fbfcff; transition: .2s; }
+    .state-node.active { border-color: var(--blue); background: #f0f3ff; box-shadow: 0 0 0 4px rgb(84 120 238 / 9%); }
+    .state-node.accept { border-color: #b8e4d1; background: #f0faf5; }
+    .state-node.reject { border-color: #f0c4ca; background: #fff5f5; }
+    .state-name { font: 800 14px ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .state-desc { color: var(--muted); font-size: 10px; }
+    .state-arrow { color: #9aa1b6; font-size: 22px; text-align: center; }
+    .diagram-note { margin: 8px 0 0; border-top: 1px solid #f0f1f6; padding-top: 10px; color: var(--muted); font-size: 11px; text-align: center; }
+    .diagram-note strong { color: #555b70; }
+
+    .lower-grid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(270px, .75fr); gap: 18px; margin-top: 18px; }
+    .table-card { padding-bottom: 14px; }
+    .table-scroll { overflow: auto; max-height: 340px; border: 1px solid #edf0f5; border-radius: 10px; }
+    table { width: 100%; border-collapse: collapse; text-align: left; font-size: 11px; white-space: nowrap; }
+    thead { position: sticky; top: 0; z-index: 1; background: #f8f9fc; color: #777d91; }
+    th { padding: 10px 11px; font-weight: 750; }
+    td { border-top: 1px solid #f0f1f6; padding: 9px 11px; color: #50566a; }
+    td.mono { color: #4f5c99; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .empty-row td { padding: 24px 12px; color: #969bad; text-align: center; }
+    .explanation-card { display: flex; flex-direction: column; }
+    .explanation { min-height: 70px; border-radius: 10px; padding: 13px; background: #f5f6ff; color: #515875; font-size: 13px; }
+    .explanation::before { content: "ⓘ"; margin-right: 7px; color: var(--blue); font-weight: 800; }
+    .mini-rule { margin-top: 15px; border-top: 1px solid #eff0f5; padding-top: 13px; }
+    .mini-rule strong { display: block; margin-bottom: 5px; font-size: 11px; }
+    .mini-rule p { margin: 0; color: var(--muted); font-size: 11px; }
+    .result-card { display: grid; grid-template-columns: 1fr auto; gap: 18px; align-items: center; margin-top: 18px; border-left: 4px solid #cbd0dc; }
+    .result-card.accepted { border-left-color: #28a577; background: linear-gradient(100deg, #f3fbf7, #fff 60%); }
+    .result-card.rejected { border-left-color: #db5b6b; background: linear-gradient(100deg, #fff6f6, #fff 60%); }
+    .result-title { margin: 0 0 4px; font-size: 17px; font-weight: 850; }
+    .result-card.accepted .result-title { color: var(--green); }
+    .result-card.rejected .result-title { color: var(--red); }
+    .result-message { margin: 0; color: #73788b; font-size: 12px; }
+    .stats { display: flex; gap: 18px; }
+    .stat { min-width: 58px; text-align: center; }
+    .stat strong { display: block; font-size: 18px; }
+    .stat span { color: var(--muted); font-size: 10px; }
+    .footer-note { margin: 14px 0 0; color: #9297a8; font-size: 11px; text-align: center; }
+
+    @media (max-width: 850px) {
+      .input-row { align-items: stretch; flex-direction: column; }
+      .controls { align-items: center; flex-wrap: wrap; }
+      .controls .btn { flex: 1; }
+      .workspace { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 650px) {
+      .page { width: min(100% - 24px, 540px); padding-top: 23px; }
+      .header { flex-direction: column; gap: 10px; }
+      .badge { margin-top: 0; }
+      .input-card, .stack-card, .state-card, .table-card, .explanation-card, .result-card { padding: 17px; }
+      .lower-grid { grid-template-columns: 1fr; }
+      .result-card { grid-template-columns: 1fr; }
+      .stats { justify-content: space-between; }
+    }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header class="header">
+      <div>
+        <div class="eyebrow">Theory of Computation · Interactive Lab</div>
+        <h1>Palindromic PDA Simulator</h1>
+        <p class="subtitle">Understanding <span class="formula">w c w<sup>R</sup></span> using Stack Operations</p>
+      </div>
+      <div class="badge">◉ &nbsp;Pushdown Automaton | PDA</div>
+    </header>
+
+    <section class="card input-card" aria-labelledby="input-heading">
+      <h2 class="section-heading" id="input-heading"><span class="num">1</span> Try an input string</h2>
+      <div class="input-row">
+        <div class="input-wrap">
+          <label for="inputString">Binary string with a center marker</label>
+          <input id="inputString" type="text" placeholder="Enter string (e.g. 10c01)" autocomplete="off" spellcheck="false" aria-describedby="input-help">
+        </div>
+        <div class="controls">
+          <button class="btn primary" id="runButton" type="button">▶ Run Simulation</button>
+          <button class="btn" id="stepButton" type="button">Step Forward</button>
+          <button class="btn auto" id="autoButton" type="button">↻ Auto Run</button>
+          <button class="btn" id="resetButton" type="button">Reset</button>
+        </div>
+      </div>
+      <div class="examples" id="input-help">
+        <span>Examples:</span>
+        <button class="example" type="button" data-example="10c01">10c01</button>
+        <button class="example" type="button" data-example="101c101">101c101</button>
+        <button class="example" type="button" data-example="11c11">11c11</button>
+        <button class="example" type="button" data-example="10c10">10c10</button>
+        <button class="example" type="button" data-example="c">c</button>
+      </div>
+    </section>
+
+    <section class="workspace" aria-label="Live PDA visualization">
+      <article class="card stack-card">
+        <div class="card-topline">
+          <h2 class="section-heading"><span class="num">2</span> Stack visualization</h2>
+          <span class="mode-pill" id="modePill">PUSH MODE</span>
+        </div>
+        <div class="stack-stage">
+          <div class="stack-column" id="stackView" aria-label="Stack contents"></div>
+        </div>
+        <div class="stack-caption">Top of stack ↑ &nbsp;·&nbsp; Z₀ is the bottom marker</div>
+      </article>
+      <article class="card state-card">
+        <h2 class="section-heading"><span class="num">3</span> PDA states</h2>
+        <div class="state-diagram" aria-label="State transition diagram">
+          <div class="state-node active" data-state="q0"><span class="state-name">q0</span><span class="state-desc">PUSH</span></div>
+          <div class="state-arrow">→</div>
+          <div class="state-node" data-state="q1"><span class="state-name">q1</span><span class="state-desc">POP &amp; MATCH</span></div>
+          <div></div><div class="state-arrow">↘</div>
+          <div class="state-node" data-state="q_accept"><span class="state-name">q_accept</span><span class="state-desc">ACCEPTED</span></div>
+          <div></div><div class="state-arrow">↗</div>
+          <div class="state-node" data-state="q_reject"><span class="state-name">q_reject</span><span class="state-desc">REJECTED</span></div>
+        </div>
+        <p class="diagram-note"><strong>q0</strong> pushes before c &nbsp;·&nbsp; <strong>q1</strong> matches and pops after c</p>
+      </article>
+    </section>
+
+    <section class="lower-grid">
+      <article class="card table-card">
+        <h2 class="section-heading"><span class="num">4</span> Step-by-step execution</h2>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Step</th><th>Input</th><th>Current State</th><th>Stack Before</th><th>Operation</th><th>Stack After</th></tr></thead>
+            <tbody id="stepsBody"><tr class="empty-row"><td colspan="6">Your transitions will appear here as the PDA runs.</td></tr></tbody>
+          </table>
+        </div>
+      </article>
+      <article class="card explanation-card">
+        <h2 class="section-heading"><span class="num">5</span> What is happening?</h2>
+        <div class="explanation" id="explanation" aria-live="polite">Enter a string, then run or step through the PDA. The stack stores the first half so it can be checked in reverse.</div>
+        <div class="mini-rule">
+          <strong>Acceptance rule</strong>
+          <p>There must be exactly one <code>c</code>. After the marker, every bit must match and pop the stack. Accept only when the input ends with Z₀ alone.</p>
+        </div>
+      </article>
+    </section>
+
+    <section class="card result-card" id="resultCard" aria-live="polite">
+      <div>
+        <h2 class="result-title" id="resultTitle">Ready to simulate</h2>
+        <p class="result-message" id="resultMessage">The language is L = { w c w<sup>R</sup> | w ∈ {0,1}<sup>*</sup> }.</p>
+      </div>
+      <div class="stats">
+        <div class="stat"><strong id="stepCount">0</strong><span>STEPS</span></div>
+        <div class="stat"><strong id="pushCount">0</strong><span>PUSHES</span></div>
+        <div class="stat"><strong id="popCount">0</strong><span>POPS</span></div>
+        <div class="stat"><strong id="finalState">q0</strong><span>FINAL STATE</span></div>
+      </div>
+    </section>
+    <p class="footer-note">A deterministic PDA for strings with a known middle marker · No data leaves your browser</p>
+  </main>
+
+  <script>
+    (() => {
+      "use strict";
+
+      const input = document.getElementById("inputString");
+      const runButton = document.getElementById("runButton");
+      const stepButton = document.getElementById("stepButton");
+      const autoButton = document.getElementById("autoButton");
+      const resetButton = document.getElementById("resetButton");
+      const stackView = document.getElementById("stackView");
+      const stepsBody = document.getElementById("stepsBody");
+      const explanation = document.getElementById("explanation");
+      const modePill = document.getElementById("modePill");
+      const resultCard = document.getElementById("resultCard");
+      const resultTitle = document.getElementById("resultTitle");
+      const resultMessage = document.getElementById("resultMessage");
+      const stepCount = document.getElementById("stepCount");
+      const pushCount = document.getElementById("pushCount");
+      const popCount = document.getElementById("popCount");
+      const finalState = document.getElementById("finalState");
+
+      let sim;
+      let autoTimer = null;
+
+      function newSimulation(value) {
+        return {
+          text: value,
+          index: 0,
+          state: "q0",
+          stack: ["Z0"],
+          rows: [],
+          pushes: 0,
+          pops: 0,
+          done: false,
+          accepted: null,
+          reason: "",
+          invalid: null,
+          cCount: (value.match(/c/g) || []).length
+        };
+      }
+
+      function stopAuto() {
+        if (autoTimer !== null) {
+          window.clearInterval(autoTimer);
+          autoTimer = null;
+        }
+        autoButton.textContent = "↻ Auto Run";
+      }
+
+      function stackText(stack) {
+        return stack.slice().reverse().join(" ");
+      }
+
+      function render() {
+        stackView.replaceChildren();
+        if (sim.stack.length === 0) {
+          const empty = document.createElement("span");
+          empty.className = "stack-empty";
+          empty.textContent = "Stack is empty";
+          stackView.append(empty);
+        } else {
+          sim.stack.slice().reverse().forEach((symbol) => {
+            const block = document.createElement("div");
+            block.className = `stack-symbol${symbol === "Z0" ? " bottom" : ""}`;
+            block.textContent = symbol;
+            stackView.append(block);
+          });
+        }
+
+        stepsBody.replaceChildren();
+        if (sim.rows.length === 0) {
+          const row = document.createElement("tr");
+          row.className = "empty-row";
+          const cell = document.createElement("td");
+          cell.colSpan = 6;
+          cell.textContent = "Your transitions will appear here as the PDA runs.";
+          row.append(cell);
+          stepsBody.append(row);
+        } else {
+          sim.rows.forEach((entry) => {
+            const row = document.createElement("tr");
+            [entry.step, entry.symbol, entry.state, entry.before, entry.operation, entry.after].forEach((value, index) => {
+              const cell = document.createElement("td");
+              cell.textContent = value;
+              if (index === 1 || index === 2 || index === 3 || index === 5) cell.className = "mono";
+              row.append(cell);
+            });
+            stepsBody.append(row);
+          });
+        }
+
+        document.querySelectorAll(".state-node").forEach((node) => {
+          node.classList.toggle("active", node.dataset.state === sim.state);
+          node.classList.toggle("accept", sim.done && sim.accepted === true && node.dataset.state === "q_accept");
+          node.classList.toggle("reject", sim.done && sim.accepted === false && node.dataset.state === "q_reject");
+        });
+
+        const mode = sim.done ? (sim.accepted ? "ACCEPTED" : "REJECTED") : (sim.state === "q1" ? "POP MODE" : "PUSH MODE");
+        modePill.textContent = mode;
+        modePill.className = `mode-pill${sim.done ? (sim.accepted ? " done" : " reject") : (sim.state === "q1" ? " pop" : "")}`;
+        stepCount.textContent = String(sim.rows.length);
+        pushCount.textContent = String(sim.pushes);
+        popCount.textContent = String(sim.pops);
+        finalState.textContent = sim.state;
+
+        resultCard.classList.toggle("accepted", sim.done && sim.accepted === true);
+        resultCard.classList.toggle("rejected", sim.done && sim.accepted === false);
+        resultTitle.textContent = sim.done ? (sim.accepted ? "STRING ACCEPTED" : "STRING REJECTED") : "Ready to simulate";
+        resultMessage.textContent = sim.done
+          ? `${sim.reason} Final stack: ${sim.stack.length ? stackText(sim.stack) : "(empty)"}.`
+          : "The language is L = { w c wᴿ | w ∈ {0,1}* }.";
+
+        const canContinue = !sim.done;
+        stepButton.disabled = !canContinue;
+        runButton.disabled = !canContinue;
+        autoButton.disabled = !canContinue;
+      }
+
+      function addRow(symbol, state, before, operation) {
+        sim.rows.push({
+          step: String(sim.rows.length + 1),
+          symbol,
+          state,
+          before: before.length ? stackText(before) : "(empty)",
+          operation,
+          after: sim.stack.length ? stackText(sim.stack) : "(empty)"
+        });
+      }
+
+      function finish(accepted, reason, symbol = "END", operation = "End of input") {
+        if (sim.done) return;
+        const before = sim.stack.slice();
+        const oldState = sim.state;
+        sim.state = accepted ? "q_accept" : "q_reject";
+        sim.done = true;
+        sim.accepted = accepted;
+        sim.reason = reason;
+        addRow(symbol, `${oldState} → ${sim.state}`, before, operation);
+        explanation.textContent = reason;
+        stopAuto();
+      }
+
+      function step() {
+        if (sim.done) return;
+
+        if (sim.index >= sim.text.length) {
+          if (sim.cCount === 0) finish(false, "No center marker c was found. A string in this language must contain exactly one marker.");
+          else if (sim.cCount > 1) finish(false, "More than one center marker c was found. The language permits exactly one.");
+          else if (sim.state === "q0") finish(false, "The input ended before the PDA reached c, so the second half was never started.");
+          else if (sim.stack.length !== 1 || sim.stack[0] !== "Z0") finish(false, "The input ended with unmatched symbols still on the stack, so the two halves have different lengths.");
+          else finish(true, "All input was consumed, the halves matched in reverse order, and only Z0 remains.");
+          render();
+          return;
+        }
+
+        const symbol = sim.text[sim.index];
+        const before = sim.stack.slice();
+        const oldState = sim.state;
+        let operation;
+        let message;
+        sim.index += 1;
+
+        if (symbol !== "0" && symbol !== "1" && symbol !== "c") {
+          operation = `Invalid symbol "${symbol}": reject`;
+          sim.state = "q_reject";
+          sim.done = true;
+          sim.accepted = false;
+          sim.reason = `Invalid character "${symbol}" at position ${sim.index}; only 0, 1, and one c are allowed.`;
+          message = sim.reason;
+        } else if (symbol === "c" && sim.state === "q0") {
+          sim.state = "q1";
+          operation = "Read c; switch to POP mode";
+          message = "Center marker c found: switching from PUSH to POP mode. The stack stays unchanged.";
+        } else if (symbol === "c") {
+          sim.state = "q_reject";
+          sim.done = true;
+          sim.accepted = false;
+          operation = "Second c found: reject";
+          sim.reason = "A second center marker c was found. The language requires exactly one.";
+          message = sim.reason;
+        } else if (sim.state === "q0") {
+          sim.stack.push(symbol);
+          sim.pushes += 1;
+          operation = `Push ${symbol}`;
+          message = `Reading ${symbol}: push ${symbol} onto the stack.`;
+        } else if (sim.stack.length > 1 && sim.stack[sim.stack.length - 1] === symbol) {
+          sim.stack.pop();
+          sim.pops += 1;
+          operation = `Match ${symbol}; pop ${symbol}`;
+          message = `Current symbol ${symbol} matches the stack top: pop operation performed.`;
+        } else {
+          sim.state = "q_reject";
+          sim.done = true;
+          sim.accepted = false;
+          if (sim.stack.length === 1) {
+            operation = `No ${symbol} to match; reject`;
+            sim.reason = `There is no unmatched symbol on the stack for ${symbol}; the second half is longer than the first half.`;
+          } else {
+            operation = `Expected ${sim.stack[sim.stack.length - 1]}, got ${symbol}; reject`;
+            sim.reason = `Mismatch detected: input ${symbol} does not match stack top ${sim.stack[sim.stack.length - 1]}.`;
+          }
+          message = sim.reason;
+        }
+
+        addRow(symbol, `${oldState} → ${sim.state}`, before, operation);
+        explanation.textContent = message;
+        render();
+      }
+
+      function reset(value = input.value) {
+        stopAuto();
+        sim = newSimulation(value);
+        explanation.textContent = "Enter a string, then run or step through the PDA. The stack stores the first half so it can be checked in reverse.";
+        render();
+      }
+
+      function start() {
+        reset(input.value);
+        while (!sim.done) step();
+      }
+
+      runButton.addEventListener("click", start);
+      stepButton.addEventListener("click", step);
+      autoButton.addEventListener("click", () => {
+        if (autoTimer !== null) {
+          stopAuto();
+          return;
+        }
+        if (sim.done) return;
+        autoButton.textContent = "Ⅱ Pause";
+        autoTimer = window.setInterval(() => {
+          if (sim.done) stopAuto();
+          else step();
+        }, 550);
+      });
+      resetButton.addEventListener("click", () => reset(input.value));
+      input.addEventListener("input", () => reset(input.value));
+      input.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") start();
+      });
+      document.querySelectorAll(".example").forEach((button) => {
+        button.addEventListener("click", () => {
+          input.value = button.dataset.example;
+          reset(input.value);
+        });
+      });
+
+      reset("");
+    })();
+  </script>
+</body>
+</html>
